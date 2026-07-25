@@ -394,7 +394,8 @@
   .compat-item {
     font-family: ui-monospace, "Cascadia Code", monospace;
     font-size: 0.62rem; font-weight: 500; padding: 2px 6px; border-radius: 4px;
-    background: var(--code-bg); color: var(--chip-color); white-space: nowrap;
+    background: var(--code-bg); color: var(--chip-color);
+    max-width: 100%; overflow-wrap: break-word;
   }
   .compat-universal .compat-item { background: var(--text); color: var(--surface); }
   .output-note { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.68rem; color: var(--text-dim); line-height: 1.4; }
