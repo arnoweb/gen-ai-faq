@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publie le contenu de docs/ dans le repo public arnoweb/projects-docs,
-# sous le sous-dossier gen-ai-faq/. architecture.html devient index.html.
+# sous le sous-dossier gen-ai-faq/. business-value.html devient index.html.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,21 +27,15 @@ fi
 TARGET_DIR="$CACHE_DIR/$TARGET_SUBDIR"
 mkdir -p "$TARGET_DIR"
 
-# Miroir de docs/ vers le sous-dossier cible, sans .DS_Store ni architecture.html
-# (architecture.html est copié séparément en index.html juste après).
-rsync -a --delete \
+# Miroir de docs/ vers le sous-dossier cible, sans .DS_Store ni business-value.html
+# (business-value.html est copié séparément en index.html juste après). architecture.html
+# et business-value-en.html sont publiés tels quels, sous leur propre nom.
+rsync -a --delete --delete-excluded \
   --exclude '.DS_Store' \
-  --exclude 'architecture.html' \
+  --exclude 'business-value.html' \
   "$DOCS_DIR/" "$TARGET_DIR/"
 
-cp "$DOCS_DIR/architecture.html" "$TARGET_DIR/index.html"
-
-# Les autres pages HTML pointent vers architecture.html : on corrige les liens
-# pour qu'ils pointent vers index.html une fois publiés.
-for f in "$TARGET_DIR"/*.html; do
-  [ -f "$f" ] || continue
-  sed -i '' 's/architecture\.html/index.html/g' "$f"
-done
+cp "$DOCS_DIR/business-value.html" "$TARGET_DIR/index.html"
 
 if [ -n "$(git -C "$CACHE_DIR" status --porcelain -- "$TARGET_SUBDIR")" ]; then
   SRC_SHA="$(git -C "$REPO_ROOT" rev-parse --short HEAD)"

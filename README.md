@@ -167,11 +167,10 @@ Ce repo publie automatiquement le contenu de `docs/` vers le repo public
 [arnoweb/projects-docs](https://github.com/arnoweb/projects-docs), sous
 `gen-ai-faq/`, à chaque `git push` qui modifie des fichiers de `docs/`.
 
-- `docs/architecture.html` est republié sous le nom `index.html` (en écrasant
-  l'existant), et les liens internes (`business-value*.html`) qui pointaient
-  vers `architecture.html` sont réécrits pour pointer vers `index.html`.
-- Les autres fichiers de `docs/` (`business-value.html`, `business-value-en.html`,
-  `assets/`) sont copiés tels quels.
+- `docs/business-value.html` est republié sous le nom `index.html` (en écrasant
+  l'existant) — c'est la page d'entrée du repo public.
+- Les autres fichiers de `docs/` (`architecture.html`, `business-value-en.html`,
+  `assets/`) sont copiés tels quels, sous leur propre nom.
 - La logique vit dans [scripts/sync-docs-to-public.sh](scripts/sync-docs-to-public.sh)
   (appelable manuellement) et est déclenchée par le hook git
   [scripts/git-hooks/pre-push](scripts/git-hooks/pre-push). Un échec de la
