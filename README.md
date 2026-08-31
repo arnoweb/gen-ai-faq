@@ -160,3 +160,40 @@ domain data is what actually drives the improvement, not just a bigger base mode
 See [docs/architecture.html](docs/architecture.html) for the full technical architecture (data pipeline, AutoTrain fine-tuning, model registry, serving apps, and optional LLM generation).
 
 See [docs/business-value.html](docs/business-value.html) (FR) / [docs/business-value-en.html](docs/business-value-en.html) (EN) for the functional overview (use cases, value vs a standard FAQ, target companies).
+
+## Publication automatique de docs/ vers le repo public
+
+Ce repo publie automatiquement le contenu de `docs/` vers le repo public
+[arnoweb/projects-docs](https://github.com/arnoweb/projects-docs), sous
+`gen-ai-faq/`, à chaque `git push` qui modifie des fichiers de `docs/`.
+
+- `docs/architecture.html` est republié sous le nom `index.html` (en écrasant
+  l'existant), et les liens internes (`business-value*.html`) qui pointaient
+  vers `architecture.html` sont réécrits pour pointer vers `index.html`.
+- Les autres fichiers de `docs/` (`business-value.html`, `business-value-en.html`,
+  `assets/`) sont copiés tels quels.
+- La logique vit dans [scripts/sync-docs-to-public.sh](scripts/sync-docs-to-public.sh)
+  (appelable manuellement) et est déclenchée par le hook git
+  [scripts/git-hooks/pre-push](scripts/git-hooks/pre-push). Un échec de la
+  synchronisation n'empêche jamais le push vers `origin`.
+- Le script maintient un clone local de `projects-docs` dans
+  `~/.cache/git-docs-sync/projects-docs` (recréé automatiquement s'il n'existe pas).
+
+### Mise en place sur une nouvelle machine
+
+Le hook est versionné dans le repo mais `git` ne l'active pas tout seul — il
+faut pointer `core.hooksPath` dessus une fois par clone :
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+Prérequis :
+- `rsync` (déjà présent sur macOS/Linux)
+- Un accès push authentifié à `github.com/arnoweb/projects-docs` (SSH configuré,
+  ou `gh auth login` avec le scope `repo`)
+
+Pour forcer une synchronisation manuelle (sans passer par un push) :
+```bash
+./scripts/sync-docs-to-public.sh
+```
