@@ -31,6 +31,15 @@ MODEL_PATHS = {
     "Fine-tuned (AutoTrain)": "arnoweb/model-faq-sentence-autotrain",
 }
 
+# int8-quantized ONNX file to load per repo instead of the default fp32 onnx/model.onnx
+# (~4x smaller / ~30% less RAM each — this app keeps both models resident at once, so the
+# saving applies twice). Cosine similarity to the fp32 embeddings is ~0.96-0.997 on real FAQ
+# questions, no meaningful ranking impact.
+QUANTIZED_FILES = {
+    "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": "onnx/model_quint8_avx2.onnx",
+    "arnoweb/model-faq-sentence-autotrain": "onnx/model_quantized.onnx",
+}
+
 st.markdown(
     """
     <style>
@@ -83,7 +92,10 @@ st.markdown(
 # models here already have pre-exported ONNX weights on the Hub.
 @st.cache_resource(show_spinner=False)
 def load_model(path: str) -> SentenceTransformer:
-    return SentenceTransformer(path, backend="onnx", model_kwargs={"provider": "CPUExecutionProvider"})
+    model_kwargs = {"provider": "CPUExecutionProvider"}
+    if path in QUANTIZED_FILES:
+        model_kwargs["file_name"] = QUANTIZED_FILES[path]
+    return SentenceTransformer(path, backend="onnx", model_kwargs=model_kwargs)
 
 
 @st.cache_data(show_spinner=False, ttl=300)

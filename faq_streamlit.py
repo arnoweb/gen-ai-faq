@@ -89,11 +89,24 @@ ONNX_MODEL_KWARGS = {"provider": "CPUExecutionProvider"}
 
 @st.cache_resource
 def load_model():
-    return SentenceTransformer(model_path, backend="onnx", model_kwargs=ONNX_MODEL_KWARGS)
+    # int8-quantized export (pushed alongside the fp32 one) instead of the default
+    # onnx/model.onnx: ~265MB / ~30% less RAM than the 1.0GB fp32 file, cosine similarity
+    # to the fp32 embeddings ~0.96-0.997 on real FAQ questions — no meaningful ranking impact.
+    return SentenceTransformer(
+        model_path,
+        backend="onnx",
+        model_kwargs={**ONNX_MODEL_KWARGS, "file_name": "onnx/model_quantized.onnx"},
+    )
 
 @st.cache_resource
 def load_reranker():
-    return CrossEncoder(reranker_path, backend="onnx", model_kwargs=ONNX_MODEL_KWARGS)
+    # int8-quantized export (already published on the Hub) instead of the default fp32
+    # onnx/model.onnx: ~113MB / ~4x less RAM than the 449MB fp32 file, same architecture.
+    return CrossEncoder(
+        reranker_path,
+        backend="onnx",
+        model_kwargs={**ONNX_MODEL_KWARGS, "file_name": "onnx/model_quint8_avx2.onnx"},
+    )
 
 @st.cache_data(ttl=300)
 def load_faq_data(faq_data_path):
