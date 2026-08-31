@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FAQ Retrieval — Technical Architecture</title>
+<title>FAQ Retrieval — Architecture technique</title>
 <style>
   :root {
     --bg: #F1F5F9;
@@ -137,6 +137,15 @@
     background: var(--chip-bg);
     color: var(--chip-color);
   }
+
+  /* tags colorés par techno */
+  .chip-python     { background: #3776AB; color: #FFFFFF; }
+  .chip-streamlit  { background: #FF4B4B; color: #FFFFFF; }
+  .chip-pytorch    { background: #EE4C2C; color: #FFFFFF; }
+  .chip-st         { background: #7C3AED; color: #FFFFFF; }
+  .chip-hf         { background: #FFD21E; color: #1A1A1A; }
+  .chip-autotrain  { background: #FFD21E; color: #1A1A1A; }
+  .chip-dotenv     { background: #16A34A; color: #FFFFFF; }
 
   /* ---------- Nav ---------- */
   nav.toc {
@@ -494,33 +503,33 @@
 <div class="page">
 
   <header class="hero">
-    <p class="eyebrow">Technical Architecture</p>
+    <p class="eyebrow">Architecture technique</p>
     <h1>FAQ <em>Multilingue</em> — Fine-Tuning &amp; Retrieval</h1>
     <p class="subtitle">
-      How the raw FAQ JSONL files become a fine-tuned sentence-transformer model on the Hugging Face Hub,
-      and how <code>faq_streamlit.py</code>, <code>faq_compare_streamlit.py</code> and
-      <code>evaluate_models_compare.py</code> each consume it.
+      Comment les fichiers FAQ JSONL bruts deviennent un modèle sentence-transformer fine-tuné sur le
+      Hugging Face Hub, et comment <code>faq_streamlit.py</code>, <code>faq_compare_streamlit.py</code> et
+      <code>evaluate_models_compare.py</code> le consomment chacun.
     </p>
     <div class="chips">
-      <span class="chip">Python 3.11</span>
-      <span class="chip">Streamlit 1.51</span>
-      <span class="chip">sentence-transformers 3.3</span>
-      <span class="chip">autotrain-advanced</span>
-      <span class="chip">Hugging Face Hub</span>
+      <span class="chip chip-python">Python 3.11</span>
+      <span class="chip chip-streamlit">Streamlit 1.51</span>
+      <span class="chip chip-st">sentence-transformers 3.3</span>
+      <span class="chip chip-autotrain">autotrain-advanced</span>
+      <span class="chip chip-hf">Hugging Face Hub</span>
     </div>
   </header>
 
   <nav class="toc">
     <div class="inner">
       <a href="#overview">Schéma</a>
-      <a href="#data">Data</a>
+      <a href="#data">Données</a>
       <a href="#training">Fine-tuning</a>
-      <a href="#registry">Model registry</a>
-      <a href="#serving">Serving</a>
-      <a href="#generation">Generation</a>
-      <a href="#flow">Request flow</a>
+      <a href="#registry">Registre de modèles</a>
+      <a href="#serving">Service</a>
+      <a href="#generation">Génération</a>
+      <a href="#flow">Flux de requête</a>
       <a href="#stack">Stack</a>
-      <a href="#deploy">Deployment</a>
+      <a href="#deploy">Déploiement</a>
     </div>
   </nav>
 
@@ -751,45 +760,45 @@
 
       <div class="diagram-card-foot">
         <span class="footer-label">Stack</span>
-        <span class="chip">sentence-transformers</span>
-        <span class="chip">PyTorch</span>
-        <span class="chip">autotrain-advanced</span>
-        <span class="chip">Streamlit</span>
-        <span class="chip">Hugging Face Hub</span>
-        <span class="chip">python-dotenv</span>
+        <span class="chip chip-st">sentence-transformers</span>
+        <span class="chip chip-pytorch">PyTorch</span>
+        <span class="chip chip-autotrain">autotrain-advanced</span>
+        <span class="chip chip-streamlit">Streamlit</span>
+        <span class="chip chip-hf">Hugging Face Hub</span>
+        <span class="chip chip-dotenv">python-dotenv</span>
       </div>
     </div>
   </section>
 
   <section class="block" id="data">
-    <div class="block-head"><span class="block-num">01</span><h2>Data layer</h2></div>
+    <div class="block-head"><span class="block-num">01</span><h2>Couche de données</h2></div>
     <p class="block-desc">
-      The FAQ content is plain JSONL, one <code>{"query", "answer"}</code> object per line, kept separately
-      per language so the apps can filter without a language field.
+      Le contenu FAQ est du JSONL brut, un objet <code>{"query", "answer"}</code> par ligne, conservé
+      séparément par langue afin que les apps puissent filtrer sans champ de langue.
     </p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>File</th><th>Role</th><th>Consumed by</th></tr></thead>
+        <thead><tr><th>Fichier</th><th>Rôle</th><th>Consommé par</th></tr></thead>
         <tbody>
-          <tr><td><code>data/faq_source_fr.jsonl</code></td><td class="dim">French retrieval corpus</td><td class="dim">both Streamlit apps, evaluator</td></tr>
-          <tr><td><code>data/faq_source_en.jsonl</code></td><td class="dim">English retrieval corpus</td><td class="dim">both Streamlit apps, evaluator</td></tr>
-          <tr><td><code>data/faq_evaluation.jsonl</code></td><td class="dim">Held-out queries with the expected true answer + lang</td><td class="dim">evaluate_models_compare.py only</td></tr>
-          <tr><td><code>data/file_fusion.py</code></td><td class="dim">Merges fr + en into one file, strips the "language" key</td><td class="dim">run manually before an AutoTrain job</td></tr>
-          <tr><td><code>data_autotrain/faq_train.jsonl</code><br><code>data_autotrain/faq_validation.jsonl</code></td><td class="dim">Train/validation split for fine-tuning</td><td class="dim">AutoTrain job</td></tr>
+          <tr><td><code>data/faq_source_fr.jsonl</code></td><td class="dim">Corpus de retrieval français</td><td class="dim">les deux apps Streamlit, l'évaluateur</td></tr>
+          <tr><td><code>data/faq_source_en.jsonl</code></td><td class="dim">Corpus de retrieval anglais</td><td class="dim">les deux apps Streamlit, l'évaluateur</td></tr>
+          <tr><td><code>data/faq_evaluation.jsonl</code></td><td class="dim">Requêtes de test avec la réponse attendue + la langue</td><td class="dim">evaluate_models_compare.py uniquement</td></tr>
+          <tr><td><code>data/file_fusion.py</code></td><td class="dim">Fusionne fr + en en un seul fichier, retire la clé "language"</td><td class="dim">exécuté manuellement avant un job AutoTrain</td></tr>
+          <tr><td><code>data_autotrain/faq_train.jsonl</code><br><code>data_autotrain/faq_validation.jsonl</code></td><td class="dim">Split train/validation pour le fine-tuning</td><td class="dim">Job AutoTrain</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <section class="block" id="training">
-    <div class="block-head"><span class="block-num">02</span><h2>Fine-tuning pipeline</h2></div>
+    <div class="block-head"><span class="block-num">02</span><h2>Pipeline de fine-tuning</h2></div>
     <p class="block-desc">
-      Driven entirely by <code>models/config/config.yml</code> and run through <code>autotrain-advanced</code>
-      on the local backend — no external training service involved.
+      Entièrement piloté par <code>models/config/config.yml</code> et exécuté via
+      <code>autotrain-advanced</code> sur le backend local — aucun service d'entraînement externe.
     </p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+        <thead><tr><th>Paramètre</th><th>Valeur</th></tr></thead>
         <tbody>
           <tr><td class="dim">task</td><td><code>sentence-transformers:qa</code></td></tr>
           <tr><td class="dim">base_model</td><td><code>sentence-transformers/paraphrase-multilingual-mpnet-base-v2</code></td></tr>
@@ -803,48 +812,49 @@
   </section>
 
   <section class="block" id="registry">
-    <div class="block-head"><span class="block-num">03</span><h2>Model registry</h2></div>
+    <div class="block-head"><span class="block-num">03</span><h2>Registre de modèles</h2></div>
     <p class="block-desc">
-      There is no local model server — every app calls <code>SentenceTransformer(path)</code> directly,
-      which resolves either to a public Hub id or the fine-tuned repo, and caches the loaded model
-      in-process (<code>@st.cache_resource</code>) for the life of the Streamlit session.
+      Il n'y a pas de serveur de modèle local — chaque app appelle directement
+      <code>SentenceTransformer(path)</code>, qui résout soit vers un id public du Hub, soit vers le repo
+      fine-tuné, et met en cache le modèle chargé en mémoire (<code>@st.cache_resource</code>) pour toute
+      la durée de la session Streamlit.
     </p>
     <div class="node-row">
       <div class="node" style="--cat-color:#A78BFA">
         <h4>sentence-transformers/paraphrase-multilingual-mpnet-base-v2</h4>
-        <p>Public, unmodified — the exact checkpoint the fine-tuned model started from. The only fair "before fine-tuning" reference (verified same architecture: XLMRobertaModel, hidden_size 768, 12 layers).</p>
+        <p>Public, non modifié — exactement le checkpoint dont est parti le modèle fine-tuné. La seule référence "avant fine-tuning" équitable (architecture identique vérifiée : XLMRobertaModel, hidden_size 768, 12 couches).</p>
       </div>
       <div class="node" style="--cat-color:#A78BFA">
         <h4>arnoweb/model-faq-sentence-autotrain</h4>
-        <p>Private fine-tuned repo. Requires a Hugging Face token (env var or Streamlit secret).</p>
+        <p>Repo fine-tuné privé. Nécessite un token Hugging Face (variable d'environnement ou secret Streamlit).</p>
       </div>
     </div>
   </section>
 
   <section class="block" id="serving">
-    <div class="block-head"><span class="block-num">04</span><h2>Serving layer</h2></div>
+    <div class="block-head"><span class="block-num">04</span><h2>Couche de service</h2></div>
     <p class="block-desc">
-      Two Streamlit apps share the same retrieval mechanics — encode the FAQ answers once, encode the
-      query, rank by cosine similarity — but differ in scope.
+      Les deux apps Streamlit partagent la même mécanique de retrieval — encoder les réponses FAQ une
+      fois, encoder la requête, classer par cosine similarity — mais diffèrent dans leur périmètre.
     </p>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>App</th><th>Models loaded</th><th>Output</th></tr></thead>
+        <thead><tr><th>App</th><th>Modèles chargés</th><th>Sortie</th></tr></thead>
         <tbody>
           <tr>
             <td><code>faq_streamlit.py</code></td>
-            <td class="dim">fine-tuned only</td>
-            <td class="dim">live search-as-you-type (streamlit-searchbox), similarity threshold 0.1, optional LLM-generated answer</td>
+            <td class="dim">fine-tuné uniquement</td>
+            <td class="dim">recherche live au fil de la frappe (streamlit-searchbox), seuil de similarité 0.1, réponse LLM optionnelle</td>
           </tr>
           <tr>
             <td><code>faq_compare_streamlit.py</code></td>
-            <td class="dim">pre-fine-tuning + fine-tuned</td>
-            <td class="dim">side-by-side top-K (user-adjustable), no generation step</td>
+            <td class="dim">avant fine-tuning + fine-tuné</td>
+            <td class="dim">top-K côte à côte (réglable par l'utilisateur), pas d'étape de génération</td>
           </tr>
           <tr>
             <td><code>evaluate_models_compare.py</code></td>
-            <td class="dim">pre-fine-tuning + fine-tuned</td>
-            <td class="dim">MRR, Recall@1/3/5, mean true similarity — printed to stdout, overall &amp; per language</td>
+            <td class="dim">avant fine-tuning + fine-tuné</td>
+            <td class="dim">MRR, Recall@1/3/5, similarité moyenne — affichés dans le terminal, globalement &amp; par langue</td>
           </tr>
         </tbody>
       </table>
@@ -852,66 +862,67 @@
   </section>
 
   <section class="block" id="generation">
-    <div class="block-head"><span class="block-num">05</span><h2>Generation (optional)</h2></div>
+    <div class="block-head"><span class="block-num">05</span><h2>Génération (optionnelle)</h2></div>
     <p class="block-desc">
-      Only <code>faq_streamlit.py</code> generates prose. <code>build_rag_prompt()</code> assembles the
-      top-3 retrieved Q/A pairs plus the user's question, in the selected UI language, with an explicit
-      instruction to answer "I don't know" / "Je ne sais pas" rather than invent an answer — the app then
-      catches that phrase and shows a warning instead of the raw text.
+      Seul <code>faq_streamlit.py</code> génère du texte. <code>build_rag_prompt()</code> assemble les 3
+      paires Q/R les mieux classées plus la question de l'utilisateur, dans la langue de l'interface
+      choisie, avec une instruction explicite de répondre "I don't know" / "Je ne sais pas" plutôt que
+      d'inventer une réponse — l'app détecte ensuite cette phrase et affiche un avertissement au lieu du
+      texte brut.
     </p>
     <div class="node-row">
       <div class="node" style="--cat-color:#4ADE80">
         <h4>query_local_llm(prompt, model)</h4>
-        <p>POSTs to <code>localhost:1234/v1/chat/completions</code>. Default model <code>qwen/qwen3-vl-4b</code>. No API key required.</p>
+        <p>Envoie une requête POST vers <code>localhost:1234/v1/chat/completions</code>. Modèle par défaut <code>qwen/qwen3-vl-4b</code>. Aucune clé API requise.</p>
       </div>
       <div class="node" style="--cat-color:#4ADE80">
         <h4>query_remote_llm(prompt, model)</h4>
-        <p>POSTs to the HF router with <code>Bearer HF_API_KEY</code> (from <code>.env</code>). Raises if the key is missing.</p>
+        <p>Envoie une requête POST vers le routeur HF avec <code>Bearer HF_API_KEY</code> (depuis <code>.env</code>). Lève une erreur si la clé est absente.</p>
       </div>
     </div>
   </section>
 
   <section class="block" id="flow">
-    <div class="block-head"><span class="block-num">06</span><h2>Request flow — faq_streamlit.py</h2></div>
-    <p class="block-desc">What happens between a keystroke and an answer on screen.</p>
+    <div class="block-head"><span class="block-num">06</span><h2>Flux de requête — faq_streamlit.py</h2></div>
+    <p class="block-desc">Ce qui se passe entre une frappe au clavier et une réponse affichée à l'écran.</p>
     <ol class="flow">
       <li>
-        <p class="step-title">Language &amp; query</p>
-        <p class="step-body">User picks English/Français and types a question; this selects <code>faq_data_paths[language]</code>.</p>
+        <p class="step-title">Langue &amp; requête</p>
+        <p class="step-body">L'utilisateur choisit English/Français et tape une question ; cela sélectionne <code>faq_data_paths[language]</code>.</p>
       </li>
       <li>
-        <p class="step-title">Model &amp; corpus load (cached)</p>
-        <p class="step-body"><code>load_model()</code> loads the fine-tuned <code>SentenceTransformer</code> once; <code>load_faq_data()</code> and <code>compute_answer_embeddings()</code> cache per language so repeat queries skip re-encoding.</p>
+        <p class="step-title">Chargement du modèle &amp; du corpus (mis en cache)</p>
+        <p class="step-body"><code>load_model()</code> charge une seule fois le <code>SentenceTransformer</code> fine-tuné ; <code>load_faq_data()</code> et <code>compute_answer_embeddings()</code> sont mis en cache par langue pour éviter de ré-encoder à chaque requête.</p>
       </li>
       <li>
-        <p class="step-title">Similarity search</p>
-        <p class="step-body">The query is embedded and compared to all answer embeddings with <code>util.pytorch_cos_sim</code>; the top 3 indices are taken.</p>
+        <p class="step-title">Recherche par similarité</p>
+        <p class="step-body">La requête est encodée puis comparée à tous les embeddings de réponses avec <code>util.pytorch_cos_sim</code> ; les 3 meilleurs indices sont retenus.</p>
       </li>
       <li>
-        <p class="step-title">Confidence gate</p>
-        <p class="step-body">If the best score is below <code>SIMILARITY_THRESHOLD = 0.1</code>, the app shows a "no relevant answer" message instead of results.</p>
+        <p class="step-title">Seuil de confiance</p>
+        <p class="step-body">Si le meilleur score est inférieur à <code>SIMILARITY_THRESHOLD = 0.1</code>, l'app affiche un message "aucune réponse pertinente" au lieu des résultats.</p>
       </li>
       <li>
-        <p class="step-title">Results rendered</p>
-        <p class="step-body">The 3 matched Q/A pairs are shown ranked, each with its similarity score.</p>
+        <p class="step-title">Affichage des résultats</p>
+        <p class="step-body">Les 3 paires Q/R correspondantes sont affichées classées, chacune avec son score de similarité.</p>
       </li>
       <li>
-        <p class="step-title">Optional generation</p>
-        <p class="step-body">On button click, <code>build_rag_prompt()</code> packages the 3 results + question; <code>query_remote_llm()</code> returns prose grounded in them, or a caught refusal is shown as a warning.</p>
+        <p class="step-title">Génération optionnelle</p>
+        <p class="step-body">Au clic sur le bouton, <code>build_rag_prompt()</code> assemble les 3 résultats + la question ; <code>query_remote_llm()</code> renvoie un texte rédigé à partir d'eux, ou un refus détecté est affiché comme un avertissement.</p>
       </li>
     </ol>
   </section>
 
   <section class="block" id="stack">
-    <div class="block-head"><span class="block-num">07</span><h2>Technology stack</h2></div>
+    <div class="block-head"><span class="block-num">07</span><h2>Stack technique</h2></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Layer</th><th>Technology</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Couche</th><th>Technologie</th><th>Notes</th></tr></thead>
         <tbody>
           <tr><td>Retrieval</td><td class="dim">sentence-transformers 3.3.1, PyTorch 2.9</td><td class="dim">cosine similarity via <code>util.pytorch_cos_sim</code></td></tr>
-          <tr><td>Fine-tuning</td><td class="dim">autotrain-advanced 0.8.36</td><td class="dim">local backend, TensorBoard logging, HF Hub push</td></tr>
-          <tr><td>UI</td><td class="dim">Streamlit 1.51, streamlit-searchbox</td><td class="dim">two independent apps, shared "tight result card" CSS, live search-as-you-type</td></tr>
-          <tr><td>Generation</td><td class="dim">HF router API or local OpenAI-compatible server</td><td class="dim">optional, grounded with an explicit refusal path</td></tr>
+          <tr><td>Fine-tuning</td><td class="dim">autotrain-advanced 0.8.36</td><td class="dim">backend local, logs TensorBoard, push vers le HF Hub</td></tr>
+          <tr><td>UI</td><td class="dim">Streamlit 1.51, streamlit-searchbox</td><td class="dim">deux apps indépendantes, CSS "tight result card" partagé, recherche live au fil de la frappe</td></tr>
+          <tr><td>Génération</td><td class="dim">API du routeur HF ou serveur local compatible OpenAI</td><td class="dim">optionnelle, ancrée aux documents avec un chemin de refus explicite</td></tr>
           <tr><td>Config &amp; secrets</td><td class="dim">python-dotenv, <code>.env</code></td><td class="dim"><code>HF_API_KEY</code>, <code>HF_USERNAME</code>, <code>HF_TOKEN</code></td></tr>
         </tbody>
       </table>
@@ -919,30 +930,30 @@
   </section>
 
   <section class="block" id="deploy">
-    <div class="block-head"><span class="block-num">08</span><h2>Environments &amp; deployment</h2></div>
+    <div class="block-head"><span class="block-num">08</span><h2>Environnements &amp; déploiement</h2></div>
     <div class="deploy-grid">
       <div class="deploy-card">
-        <h4>Dev container</h4>
-        <p><code>.devcontainer/devcontainer.json</code> — Python 3.11 image, installs <code>requirements.txt</code> on create, auto-runs <code>faq_streamlit.py</code> on attach, forwards port 8501.</p>
+        <h4>Conteneur de dev</h4>
+        <p><code>.devcontainer/devcontainer.json</code> — image Python 3.11, installe <code>requirements.txt</code> à la création, lance automatiquement <code>faq_streamlit.py</code> à l'attache, expose le port 8501.</p>
       </div>
       <div class="deploy-card">
-        <h4>Local ports</h4>
-        <p>Main RAG app on <code>:8501</code>, comparison app on <code>:8502</code> — run side by side for A/B testing.</p>
+        <h4>Ports locaux</h4>
+        <p>App RAG principale sur <code>:8501</code>, app de comparaison sur <code>:8502</code> — exécutées côte à côte pour du A/B testing.</p>
       </div>
       <div class="deploy-card">
-        <h4>Streamlit runtime</h4>
-        <p><code>.streamlit/config.toml</code> holds server/runtime settings shared by both apps.</p>
+        <h4>Runtime Streamlit</h4>
+        <p><code>.streamlit/config.toml</code> contient les réglages serveur/runtime partagés par les deux apps.</p>
       </div>
       <div class="deploy-card">
-        <h4>Training vs serving split</h4>
-        <p>Fine-tuning runs locally against <code>models/config/config.yml</code>; only the resulting model is pushed to the Hub, so serving never needs the training environment.</p>
+        <h4>Séparation entraînement / service</h4>
+        <p>Le fine-tuning s'exécute localement à partir de <code>models/config/config.yml</code> ; seul le modèle résultant est poussé sur le Hub, donc le service n'a jamais besoin de l'environnement d'entraînement.</p>
       </div>
     </div>
   </section>
 
   <footer>
-    <span>FAQ Retrieval Apps — Base vs Fine-tuned</span>
-    <span>Architecture reference · generated 2026-07-20</span>
+    <span>FAQ Retrieval Apps — Base vs Fine-tuné</span>
+    <span>Référence d'architecture · générée le 2026-08-31</span>
   </footer>
 
 </div>
