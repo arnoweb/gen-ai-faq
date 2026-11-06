@@ -1,14 +1,21 @@
-# Runtime dependencies for the Streamlit apps (faq_streamlit.py, faq_compare_streamlit.py,
-# evaluate_models_compare.py). Compatible with Python 3.11-3.13.
+# Runtime dependencies for the Streamlit apps (faq_streamlit.py, faq_compare_streamlit.py).
+# Compatible with Python 3.11-3.13.
 #
-# For fine-tuning a new model locally (autotrain-advanced), use requirements-train.txt
-# instead, with Python 3.11 (autotrain-advanced pins sentencepiece==0.2.0, which has no
+# Deliberately no torch / transformers / sentence-transformers: the models run directly on
+# ONNX Runtime with a SentencePiece tokenizer (onnx_inference.py). Those libraries alone
+# took ~550 MB of RAM at import (plus a ~3 GB CUDA torch install on Linux) and pushed the
+# app past Streamlit Community Cloud's ~1 GB memory limit.
+#
+# For fine-tuning a new model locally (autotrain-advanced) or running
+# evaluate_models_compare.py (full PyTorch models), use requirements-train.txt instead,
+# with Python 3.11 (autotrain-advanced pins sentencepiece==0.2.0, which has no
 # Python 3.13 wheel).
 streamlit==1.51.0
 streamlit-searchbox==0.1.24
-sentence-transformers==5.6.0
-torch==2.9.1
 onnxruntime==1.27.0
+sentencepiece==0.2.1
+onnx==1.23.2
+numpy>=1.26
 requests==2.32.3
 python-dotenv==1.0.1
 huggingface-hub==0.27.0

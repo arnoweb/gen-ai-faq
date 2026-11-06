@@ -7,7 +7,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_searchbox import st_searchbox
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer, util
+import numpy as np
+from onnx_inference import OnnxSentenceEncoder, cos_sim, load_tokenizer
 
 load_dotenv()
 
@@ -87,15 +88,19 @@ st.markdown(
 )
 
 
-# ONNX Runtime backend: same weights, ~3-6x faster than PyTorch on CPU (verified locally),
-# with cosine similarity to the PyTorch output ~1.0 (no meaningful precision loss). Both
-# models here already have pre-exported ONNX weights on the Hub.
+# Models run directly on ONNX Runtime (see onnx_inference.py), without torch /
+# transformers / sentence-transformers: same outputs as SentenceTransformer's ONNX
+# backend, but ~1 GB less RAM, which is what lets the app fit in Streamlit Community
+# Cloud's memory limit. Both models here already have pre-exported ONNX weights on the Hub.
 @st.cache_resource(show_spinner=False)
-def load_model(path: str) -> SentenceTransformer:
-    model_kwargs = {"provider": "CPUExecutionProvider"}
-    if path in QUANTIZED_FILES:
-        model_kwargs["file_name"] = QUANTIZED_FILES[path]
-    return SentenceTransformer(path, backend="onnx", model_kwargs=model_kwargs)
+def load_tokenizer_shared():
+    # The fine-tuned model is a fine-tune of the base one: same XLM-R vocabulary, one tokenizer.
+    return load_tokenizer(MODEL_PATHS["Pre-fine-tuning"])
+
+
+@st.cache_resource(show_spinner=False)
+def load_model(path: str) -> OnnxSentenceEncoder:
+    return OnnxSentenceEncoder(path, QUANTIZED_FILES[path], load_tokenizer_shared())
 
 
 @st.cache_data(show_spinner=False, ttl=300)
@@ -114,7 +119,7 @@ def load_faq_data(faq_data_path: str) -> Tuple[List[str], List[str]]:
 def compute_embeddings(model_name: str, model_path: str, texts: List[str]):
     # Use model_path to ensure the cache key is hashable; load_model is already cached.
     model = load_model(model_path)
-    return model.encode(texts, convert_to_tensor=True)
+    return model.encode(texts)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -130,9 +135,9 @@ def run_search(
     faq_questions, _ = load_faq_data(faq_data_path)
     embeddings = compute_embeddings(model_name, MODEL_PATHS[model_name], faq_questions)
 
-    query_embedding = model.encode(query, convert_to_tensor=True)
-    similarities = util.pytorch_cos_sim(query_embedding, embeddings)[0]
-    top_k_indices = similarities.topk(top_k).indices.tolist()
+    query_embedding = model.encode(query)
+    similarities = cos_sim(query_embedding, embeddings)
+    top_k_indices = np.argsort(-similarities)[:top_k].tolist()
     return {
         "indices": top_k_indices,
         "similarities": similarities,

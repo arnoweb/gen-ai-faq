@@ -2,8 +2,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_searchbox import st_searchbox
 import json
+import numpy as np
 from pathlib import Path
-from sentence_transformers import SentenceTransformer, CrossEncoder, util
+from onnx_inference import OnnxCrossEncoder, OnnxSentenceEncoder, cos_sim, load_tokenizer
 import os
 import requests
 from dotenv import load_dotenv
@@ -83,30 +84,27 @@ faq_data_paths = {
     "Français": "data/faq_source_fr.jsonl"
 }
 
-# ONNX Runtime backend: same weights, ~3-6x faster than PyTorch on CPU (verified locally),
-# with cosine similarity to the PyTorch output ~1.0 (no meaningful precision loss).
-ONNX_MODEL_KWARGS = {"provider": "CPUExecutionProvider"}
+# Models run directly on ONNX Runtime (see onnx_inference.py), without torch /
+# transformers / sentence-transformers: same outputs, but ~1 GB less RAM, which is what
+# lets the app fit in Streamlit Community Cloud's memory limit.
+
+@st.cache_resource
+def load_tokenizer_shared():
+    # The fine-tuned model and the reranker share the XLM-R vocabulary: one tokenizer for both.
+    return load_tokenizer(model_path)
 
 @st.cache_resource
 def load_model():
     # int8-quantized export (pushed alongside the fp32 one) instead of the default
     # onnx/model.onnx: ~265MB / ~30% less RAM than the 1.0GB fp32 file, cosine similarity
     # to the fp32 embeddings ~0.96-0.997 on real FAQ questions — no meaningful ranking impact.
-    return SentenceTransformer(
-        model_path,
-        backend="onnx",
-        model_kwargs={**ONNX_MODEL_KWARGS, "file_name": "onnx/model_quantized.onnx"},
-    )
+    return OnnxSentenceEncoder(model_path, "onnx/model_quantized.onnx", load_tokenizer_shared())
 
 @st.cache_resource
 def load_reranker():
     # int8-quantized export (already published on the Hub) instead of the default fp32
     # onnx/model.onnx: ~113MB / ~4x less RAM than the 449MB fp32 file, same architecture.
-    return CrossEncoder(
-        reranker_path,
-        backend="onnx",
-        model_kwargs={**ONNX_MODEL_KWARGS, "file_name": "onnx/model_quint8_avx2.onnx"},
-    )
+    return OnnxCrossEncoder(reranker_path, "onnx/model_quint8_avx2.onnx", load_tokenizer_shared())
 
 @st.cache_data(ttl=300)
 def load_faq_data(faq_data_path):
@@ -121,7 +119,7 @@ def load_faq_data(faq_data_path):
 
 @st.cache_data(ttl=300)
 def compute_question_embeddings(_model, faq_questions):
-    return _model.encode(faq_questions, convert_to_tensor=True)
+    return _model.encode(faq_questions)
 
 def build_rag_prompt(user_question, retrieved_faqs, retrieved_questions, language="fr"):
     if language == "Français":
@@ -245,15 +243,15 @@ def retrieve_top_k(query: str, faq_data_path: str, k: int = TOP_K):
     faq_questions, faq_answers = load_faq_data(faq_data_path)
     question_embeddings = compute_question_embeddings(model, faq_questions)
 
-    query_embedding = model.encode(query, convert_to_tensor=True)
+    query_embedding = model.encode(query)
     # Pool selection is keyed on the FAQ questions only. Matching against answers too
     # (an earlier version did) lets an unrelated FAQ outrank the right one whenever its
     # answer happens to share a word with the query (e.g. "colis" appearing in an
     # assembly-instructions answer) even though its question has nothing to do with it.
-    similarities = util.pytorch_cos_sim(query_embedding, question_embeddings)[0]
+    similarities = cos_sim(query_embedding, question_embeddings)
 
     pool_size = min(RERANK_POOL, len(faq_questions))
-    pool_indices = similarities.topk(pool_size).indices.tolist()
+    pool_indices = np.argsort(-similarities)[:pool_size].tolist()
 
     top_score = similarities[pool_indices[0]].item()
     if top_score >= RERANK_SKIP_THRESHOLD:
