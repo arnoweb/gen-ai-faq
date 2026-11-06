@@ -104,7 +104,46 @@ def _external_data_model(repo_id: str, onnx_file: str) -> str:
         subprocess.run([sys.executable, __file__, source, str(tmp_dir)], check=True)
         shutil.rmtree(target_dir, ignore_errors=True)
         tmp_dir.rename(target_dir)
+        # The downloaded file is no longer needed once converted: delete it so the
+        # container doesn't keep a second copy of the weights in page cache.
+        _drop_page_cache(source)
+        _remove_hub_file(source)
+    for path in target_dir.iterdir():
+        _drop_page_cache(path)
     return str(target)
+
+
+def _drop_page_cache(path) -> None:
+    """Evict a file from the page cache.
+
+    Streamlit Community Cloud counts the container's whole memory, page cache included,
+    against its ~1 GB limit: downloading and converting the models leaves ~1 GB of
+    file pages behind even though the app itself uses ~250 MB. Pages of the memory-mapped
+    weights are read back on demand afterwards.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+        if hasattr(os, "posix_fadvise"):
+            os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _remove_hub_file(path: str) -> None:
+    """Delete a hf_hub_download file (a symlink to a blob in the Hub cache) and its blob."""
+    try:
+        blob = os.path.realpath(path)
+        os.remove(path)
+        if blob != path:
+            os.remove(blob)
+    except OSError:
+        pass
 
 
 def _session(repo_id: str, onnx_file: str) -> ort.InferenceSession:
