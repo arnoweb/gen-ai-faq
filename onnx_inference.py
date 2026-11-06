@@ -79,7 +79,13 @@ EXTERNAL_DATA_NAME = "model.onnx.data"
 def _convert_to_external_data(source: str, target_dir: str) -> None:
     import onnx  # only needed for this one-off conversion, run in a child process
 
-    model = onnx.load(source)
+    # Read the file, then evict it from the page cache straight away, and free the raw
+    # bytes once parsed: at no point are there more than two copies of the weights in memory.
+    with open(source, "rb") as f:
+        data = f.read()
+    _drop_page_cache(source)
+    model = onnx.load_from_string(data)
+    del data
     onnx.save_model(
         model,
         os.path.join(target_dir, "model.onnx"),
@@ -88,6 +94,9 @@ def _convert_to_external_data(source: str, target_dir: str) -> None:
         location=EXTERNAL_DATA_NAME,
         size_threshold=1024,
     )
+    del model
+    for name in os.listdir(target_dir):
+        _drop_page_cache(os.path.join(target_dir, name))
 
 
 def _external_data_model(repo_id: str, onnx_file: str) -> str:
@@ -96,6 +105,7 @@ def _external_data_model(repo_id: str, onnx_file: str) -> str:
     target = target_dir / "model.onnx"
     if not (target.exists() and (target_dir / EXTERNAL_DATA_NAME).exists()):
         source = hf_hub_download(repo_id, onnx_file)
+        _drop_page_cache(source)  # the download itself leaves the whole file in page cache
         tmp_dir = target_dir.with_name(f"{target_dir.name}.tmp{os.getpid()}")
         shutil.rmtree(tmp_dir, ignore_errors=True)
         tmp_dir.mkdir(parents=True)
